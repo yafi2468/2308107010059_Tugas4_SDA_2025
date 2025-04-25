@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perbandingan Algoritma Sorting</title>
+    <!-- Import Chart.js dari CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1, h2 {
+            text-align: center;
+            color: #333;
+        }
+        
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .tab-button {
+            background-color: #e0e0e0;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 5px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        .tab-button.active {
+            background-color: #4285f4;
+            color: white;
+        }
+        
+        .chart-container {
+            margin-bottom: 40px;
+        }
+        
+        .chart-wrapper {
+            height: 400px;
+            margin-bottom: 30px;
+        }
+        
+        .scale-toggle {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .scale-toggle label {
+            margin: 0 10px;
+        }
+        
+        .chart-title {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #555;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Perbandingan Performa Algoritma Sorting</h1>
+        
+        <div class="tabs">
+            <button class="tab-button active" onclick="showDataType('integer')">Data Angka</button>
+            <button class="tab-button" onclick="showDataType('string')">Data Kata</button>
+        </div>
+        
+        <div class="chart-container">
+            <h2 id="data-type-title">Performa Sorting Data Angka</h2>
+            
+            <div class="scale-toggle">
+                <label>
+                    <input type="checkbox" id="log-scale-toggle" checked onchange="toggleLogScale()">
+                    Gunakan skala logaritmik
+                </label>
+            </div>
+            
+            <div class="chart-title">Semua Algoritma</div>
+            <div class="chart-wrapper">
+                <canvas id="allAlgorithmsChart"></canvas>
+            </div>
+            
+            <div class="chart-title">Algoritma Efisien (O(n log n))</div>
+            <div class="chart-wrapper">
+                <canvas id="efficientAlgorithmsChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Data algoritma sorting untuk tipe data integer
+        const integerData = [
+            { size: 10000, bubble: 0.098, selection: 0.048, insertion: 0.034, merge: 0.003, quick: 0.001, shell: 0.001 },
+            { size: 50000, bubble: 3.665, selection: 1.145, insertion: 0.837, merge: 0.015, quick: 0.003, shell: 0.007 },
+            { size: 100000, bubble: 15.932, selection: 4.615, insertion: 3.370, merge: 0.027, quick: 0.007, shell: 0.015 },
+            { size: 250000, bubble: 99.580, selection: 28.844, insertion: 21.063, merge: 0.068, quick: 0.019, shell: 0.041 },
+            { size: 500000, bubble: 398.300, selection: 115.375, insertion: 84.250, merge: 0.147, quick: 0.041, shell: 0.089 },
+            { size: 1000000, bubble: 1593.200, selection: 461.500, insertion: 337.000, merge: 0.302, quick: 0.087, shell: 0.184 },
+            { size: 1500000, bubble: 3584.700, selection: 1038.375, insertion: 758.250, merge: 0.463, quick: 0.135, shell: 0.282 },
+            { size: 2000000, bubble: 6372.800, selection: 1846.000, insertion: 1348.000, merge: 0.628, quick: 0.186, shell: 0.384 }
+        ];
+
+        // Data algoritma sorting untuk tipe data string (kata)
+        const stringData = [
+            { size: 10000, bubble: 0.297, selection: 0.125, insertion: 0.047, merge: 0.001, quick: 0.001, shell: 0.002 },
+            { size: 50000, bubble: 9.545, selection: 3.979, insertion: 2.131, merge: 0.030, quick: 0.007, shell: 0.016 },
+            { size: 100000, bubble: 38.627, selection: 17.251, insertion: 9.182, merge: 0.040, quick: 0.021, shell: 0.028 },
+            { size: 250000, bubble: 241.419, selection: 107.819, insertion: 57.388, merge: 0.106, quick: 0.055, shell: 0.073 },
+            { size: 500000, bubble: 965.675, selection: 431.275, insertion: 229.550, merge: 0.230, quick: 0.120, shell: 0.157 },
+            { size: 1000000, bubble: 3862.700, selection: 1725.100, insertion: 918.200, merge: 0.483, quick: 0.252, shell: 0.327 },
+            { size: 1500000, bubble: 8691.075, selection: 3881.475, insertion: 2065.950, merge: 0.741, quick: 0.390, shell: 0.506 },
+            { size: 2000000, bubble: 15450.800, selection: 6900.400, insertion: 3672.800, merge: 1.011, quick: 0.535, shell: 0.691 }
+        ];
+
+        // Variabel untuk menyimpan objek chart
+        let allAlgorithmsChart;
+        let efficientAlgorithmsChart;
+        let currentDataType = 'integer';
+        let useLogScale = true;
+
+        // Warna untuk setiap algoritma
+        const colors = {
+            bubble: 'rgb(255, 0, 0)',
+            selection: 'rgb(255, 140, 0)',
+            insertion: 'rgb(255, 215, 0)',
+            merge: 'rgb(0, 128, 0)',
+            quick: 'rgb(0, 0, 255)',
+            shell: 'rgb(75, 0, 130)'
+        };
+
+        // Fungsi untuk menampilkan format angka dengan pemisah ribuan
+        function formatNumber(num) {
+            return num.toLocaleString();
+        }
+
+        // Fungsi untuk menampilkan format angka desimal
+        function formatDecimal(num) {
+            return num.toFixed(3);
+        }
+
+        // Fungsi untuk membuat atau memperbarui grafik semua algoritma
+        function createAllAlgorithmsChart(data) {
+            const ctx = document.getElementById('allAlgorithmsChart');
+            
+            if (allAlgorithmsChart) {
+                allAlgorithmsChart.destroy();
+            }
+            
+            allAlgorithmsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Bubble Sort',
+                            data: data.map(item => ({ x: item.size, y: item.bubble })),
+                            borderColor: colors.bubble,
+                            backgroundColor: colors.bubble,
+                            tension: 0.1,
+                            pointRadius: 4,
+                        },
+                        {
+                            label: 'Selection Sort',
+                            data: data.map(item => ({ x: item.size, y: item.selection })),
+                            borderColor: colors.selection,
+                            backgroundColor: colors.selection,
+                            tension: 0.1,
+                            pointRadius: 4,
+                        },
+                        {
+                            label: 'Insertion Sort',
+                            data: data.map(item => ({ x: item.size, y: item.insertion })),
+                            borderColor: colors.insertion,
+                            backgroundColor: colors.insertion,
+                            tension: 0.1,
+                            pointRadius: 4,
+                        },
+                        {
+                            label: 'Merge Sort',
+                            data: data.map(item => ({ x: item.size, y: item.merge })),
+                            borderColor: colors.merge,
+                            backgroundColor: colors.merge,
+                            tension: 0.1,
+                            pointRadius: 4,
+                        },
+                        {
+                            label: 'Quick Sort',
+                            data: data.map(item => ({ x: item.size, y: item.quick })),
+                            borderColor: colors.quick,
+                            backgroundColor: colors.quick,
+                            tension: 0.1,
+                            pointRadius: 4,
+                        },
+                        {
+                            label: 'Shell Sort',
+                            data: data.map(item => ({ x: item.size, y: item.shell })),
+                            borderColor: colors.shell,
+                            backgroundColor: colors.shell,
+                            tension: 0.1,
+                            pointRadius: 4,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: useLogScale ? 'logarithmic' : 'linear',
+                            title: {
+                                display: true,
+                                text: 'Jumlah Data'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return formatNumber(value);
+                                }
+                            }
+                        },
+                        y: {
+                            type: useLogScale ? 'logarithmic' : 'linear',
+                            title: {
+                                display: true,
+                                text: 'Waktu (detik)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return formatDecimal(value);
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + formatDecimal(context.parsed.y) + ' detik';
+                                },
+                                title: function(context) {
+                                    return formatNumber(context[0].parsed.x) + ' data';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Fungsi untuk membuat atau memperbarui grafik algoritma efisien
+        function createEfficientAlgorithmsChart(data) {
+            const ctx = document.getElementById('efficientAlgorithmsChart');
+            
+            if (efficientAlgorithmsChart) {
+                efficientAlgorithmsChart.destroy();
+            }
+            
+            efficientAlgorithmsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Merge Sort',
+                            data: data.map(item => ({ x: item.size, y: item.merge })),
+                            borderColor: colors.merge,
+                            backgroundColor: colors.merge,
+                            tension: 0.1,
+                            pointRadius: 4,
+                        },
+                        {
+                            label: 'Quick Sort',
+                            data: data.map(item => ({ x: item.size, y: item.quick })),
+                            borderColor: colors.quick,
+                            backgroundColor: colors.quick,
+                            tension: 0.1,
+                            pointRadius: 4,
+                        },
+                        {
+                            label: 'Shell Sort',
+                            data: data.map(item => ({ x: item.size, y: item.shell })),
+                            borderColor: colors.shell,
+                            backgroundColor: colors.shell,
+                            tension: 0.1,
+                            pointRadius: 4,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            title: {
+                                display: true,
+                                text: 'Jumlah Data'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return formatNumber(value);
+                                }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Waktu (detik)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return formatDecimal(value);
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + formatDecimal(context.parsed.y) + ' detik';
+                                },
+                                title: function(context) {
+                                    return formatNumber(context[0].parsed.x) + ' data';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Fungsi untuk menampilkan data berdasarkan tipe
+        function showDataType(dataType) {
+            currentDataType = dataType;
+            
+            // Update judul
+            document.getElementById('data-type-title').textContent = 
+                dataType === 'integer' ? 'Performa Sorting Data Angka' : 'Performa Sorting Data Kata';
+            
+            // Update tab yang aktif
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update grafik
+            updateCharts();
+        }
+
+        // Fungsi untuk mengganti skala grafik
+        function toggleLogScale() {
+            useLogScale = document.getElementById('log-scale-toggle').checked;
+            updateCharts();
+        }
+
+        // Fungsi untuk memperbarui kedua grafik
+        function updateCharts() {
+            const data = currentDataType === 'integer' ? integerData : stringData;
+            createAllAlgorithmsChart(data);
+            createEfficientAlgorithmsChart(data);
+        }
+
+        // Inisialisasi grafik saat halaman dimuat
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCharts();
+        });
+    </script>
+</body>
+</html>
